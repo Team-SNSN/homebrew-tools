@@ -1,10 +1,10 @@
 class Askai < Formula
   desc "AI-powered terminal automation tool"
   homepage "https://github.com/Team-SNSN/askai"
-  url "https://github.com/Team-SNSN/askai/archive/v0.1.0.tar.gz"
+  url "https://github.com/Team-SNSN/askai/archive/v0.2.0.tar.gz"
   sha256 "ab324702370e5fb588e8536b6e97fe8760857cf6a5c3c358dbe4b6c5838cada4"
   license "MIT"
-  version "0.1.0"
+  version "0.2.0"
 
   depends_on "rust" => :build
 
