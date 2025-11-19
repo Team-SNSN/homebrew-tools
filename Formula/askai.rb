@@ -1,71 +1,83 @@
 class Askai < Formula
   desc "AI-powered terminal automation tool"
   homepage "https://github.com/Team-SNSN/askai"
-  url "https://github.com/Team-SNSN/askai/archive/v0.2.1.tar.gz"
-  sha256 "8457db7fa74598f707f40b76fb39f8a1f785ba03cd74e44464c388be57a7b531"
+  url "https://github.com/Team-SNSN/askai/archive/v0.2.2.tar.gz"
+  sha256 "42ecf0d9f5f505e5f518621e13bc73dbd36f8eec8123a267a79207ef30174684"
   license "MIT"
-  version "0.2.1"
+  version "0.2.2"
 
   depends_on "rust" => :build
 
   def install
-    # Rust 바이너리 빌드
+    # Build Rust binary
     system "cargo", "build", "--release", "--locked"
 
-    # 바이너리를 askai-bin으로 설치
+    # Install binary as askai-bin
     bin.install "target/release/askai" => "askai-bin"
 
-    # Wrapper 스크립트 생성 및 설치
+    # Create and install wrapper script
     (bin/"askai").write wrapper_script
   end
 
   def wrapper_script
     <<~EOS
       #!/bin/bash
-      # askai wrapper - Homebrew 버전
-      # 이 스크립트는 명령어를 현재 쉘에서 실행할 수 있게 합니다
+      # askai wrapper - Homebrew version
+      # This script allows commands to be executed in the current shell
 
       ASKAI_BIN="#{opt_bin}/askai-bin"
 
-      # 특별한 옵션들은 바이너리로 직접 전달
+      # Pass special options directly to binary
       case "$1" in
           --help|--version|--clear-cache|--prewarm-cache|--daemon-*|--batch|-d|--debug)
               exec "$ASKAI_BIN" "$@"
               ;;
       esac
 
-      # 일반 명령어 생성 및 실행
+      # Generate and execute general commands
       if [ $# -eq 0 ]; then
-          echo "사용법: askai \\"자연어 명령어\\"" >&2
-          echo "예시: askai \\"현재 시간\\"" >&2
+          echo "Usage: askai \\"natural language command\\"" >&2
+          echo "Example: askai \\"current time\\"" >&2
           exit 1
       fi
 
-      # 명령어 생성
-      cmd=$("$ASKAI_BIN" --quiet --yes "$@" 2>/dev/null)
+      # Generate command (show user confirmation prompt)
+      # Save command using temporary file
+      TEMP_FILE=$(mktemp /tmp/askai.XXXXXX)
 
-      if [ $? -eq 0 ] && [ -n "$cmd" ]; then
-          # 명령어 실행 (eval 사용)
-          eval "$cmd"
+      # Execute binary (includes user confirmation, all stdin/stdout/stderr connected)
+      "$ASKAI_BIN" "$@" > "$TEMP_FILE"
+      exit_code=$?
+
+      if [ $exit_code -eq 0 ]; then
+          # Read and execute command if user approved
+          cmd=$(cat "$TEMP_FILE")
+          rm -f "$TEMP_FILE"
+
+          if [ -n "$cmd" ]; then
+              # Execute command (using eval)
+              eval "$cmd"
+          fi
       else
-          # 에러 발생시 일반 모드로 실행
-          exec "$ASKAI_BIN" "$@"
+          # If user cancelled or error occurred
+          rm -f "$TEMP_FILE"
+          exit $exit_code
       fi
     EOS
   end
 
   def caveats
     <<~EOS
-      🎉 askai가 설치되었습니다!
+      🎉 askai has been installed!
 
-      이제 eval 없이 직접 사용할 수 있습니다:
-        askai "현재 시간"
-        askai "src 디렉토리로 이동"
-        askai "모든 파일 목록"
+      You can now use it directly without eval:
+        askai "current time"
+        askai "change to src directory"
+        askai "list all files"
 
-      💡 cd 같은 쉘 내장 명령어도 정상 작동합니다!
+      💡 Shell built-in commands like cd work properly!
 
-      처음 사용시 Gemini API 키 설정이 필요합니다:
+      On first use, you need to set up your Gemini API key:
         export GEMINI_API_KEY="your-api-key"
 
       Get your API key from: https://makersuite.google.com/app/apikey
